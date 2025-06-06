@@ -10,6 +10,10 @@ onnx==1.15.0
 # Image processing
 pillow==10.0.1
 
+# FastAPI and Lambda adapter
+fastapi==0.104.1
+mangum==0.17.0
+
 # AWS dependencies (boto3 is already in Lambda runtime)
 elasticsearch==8.10.0
 
