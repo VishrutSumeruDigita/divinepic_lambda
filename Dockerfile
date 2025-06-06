@@ -15,6 +15,9 @@ RUN yum update -y && \
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy environment variables (if exists)
+COPY .env* ${LAMBDA_TASK_ROOT}/
+
 # Copy function code
 COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/
 

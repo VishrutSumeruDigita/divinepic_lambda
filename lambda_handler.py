@@ -1,9 +1,14 @@
 import json
 import logging
+import os
 from fastapi import FastAPI, HTTPException
 from mangum import Mangum
 from pydantic import BaseModel
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Setup logging
 logger = logging.getLogger()
@@ -32,6 +37,10 @@ async def root():
         "message": "🎉 DivinePic Face Detection API is LIVE!",
         "status": "Active",
         "version": "1.0.0",
+        "environment": {
+            "aws_region": os.getenv('AWS_REGION', 'not-set'),
+            "s3_bucket": os.getenv('S3_BUCKET_NAME', 'not-set')
+        },
         "endpoints": {
             "POST /process": "Process images for face detection",
             "GET /": "Health check"
@@ -71,6 +80,11 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": "2025-06-06T11:00:00Z",
+        "environment": {
+            "aws_access_key_set": bool(os.getenv('AWS_ACCESS_KEY_ID')),
+            "aws_region": os.getenv('AWS_REGION'),
+            "s3_bucket": os.getenv('S3_BUCKET_NAME')
+        },
         "services": {
             "face_detection": "ready",
             "elasticsearch": "connected"  # Add actual health checks
