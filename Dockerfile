@@ -12,7 +12,7 @@ RUN yum update -y && \
     rm -rf /var/cache/yum
 
 # Copy and install Python dependencies (CPU versions)
-COPY requirements-cpu.txt ${LAMBDA_TASK_ROOT}/
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy function code
