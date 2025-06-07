@@ -19,6 +19,7 @@ RUN yum update -y && \
     make \
     cmake \
     wget \
+    unzip \
     tar \
     gzip \
     libgomp \
