@@ -37,8 +37,7 @@ TEMP_UPLOAD_DIR = "/tmp/uploads"
 
 # ─── Elasticsearch setup ────────────────────────────────────────────────────────
 ES_HOSTS = [
-    os.getenv("ES_HOSTS1", "http://13.202.43.6:9200"),
-    os.getenv("ES_HOSTS2", "http://13.202.43.6:9200")  # Add second host if needed
+    os.getenv("ES_HOSTS1", "http://3.6.116.114:9200")  # Add second host if needed
 ]
 
 INDEX_NAME = os.getenv("INDEX_NAME", "face_embeddings")
@@ -48,9 +47,7 @@ s3_client = boto3.client("s3", region_name=AWS_REGION)
 
 # ─── Initialize Elasticsearch clients (will connect when first used) ──────────────
 es_clients = []
-for host in ES_HOSTS:
-    client = Elasticsearch([host], verify_certs=False)
-    es_clients.append((client, host))
+# Note: ES clients will be initialized lazily to avoid init timeout
 
 # ─── FastAPI app instance ───────────────────────────────────────────────────────
 app = FastAPI()
@@ -58,6 +55,23 @@ app = FastAPI()
 # ─── Ensure temporary upload directory exists ─────────────────────────────────
 if not os.path.isdir(TEMP_UPLOAD_DIR):
     os.makedirs(TEMP_UPLOAD_DIR)
+
+# ─── Initialize ES clients lazily ─────────────────────────────────────────────
+def get_es_clients():
+    """Get or initialize Elasticsearch clients (lazy loading)."""
+    global es_clients
+    if not es_clients:
+        logger.info("🔌 Initializing Elasticsearch clients...")
+        for host in ES_HOSTS:
+            try:
+                client = Elasticsearch([host], verify_certs=False)
+                # Test connection
+                client.info()
+                es_clients.append((client, host))
+                logger.info(f"✅ Connected to Elasticsearch at {host}")
+            except Exception as e:
+                logger.error(f"❌ Failed to connect to Elasticsearch at {host}: {e}")
+    return es_clients
 
 # ─── Create Elasticsearch index if needed ─────────────────────────────────────
 def create_index_if_not_exists():
@@ -84,7 +98,8 @@ def create_index_if_not_exists():
         }
     }
 
-    for client, host in es_clients:
+    clients = get_es_clients()
+    for client, host in clients:
         try:
             if client.indices.exists(index=INDEX_NAME):
                 logger.info(f"ℹ️  Index '{INDEX_NAME}' already exists on {host}")
@@ -199,7 +214,8 @@ def process_images_and_generate_embeddings(image_paths: List[str]):
                 }
 
                 # Index the face into all Elasticsearch clusters
-                for client, host in es_clients:
+                clients = get_es_clients()
+                for client, host in clients:
                     try:
                         client.index(index=INDEX_NAME, id=face_id, document=doc)
                         logger.info(f"✅ Indexed face {idx+1} from '{Path(image_path).name}' into ES ({host})")
@@ -292,7 +308,8 @@ async def health_check():
 async def test_elasticsearch():
     """Test Elasticsearch connections."""
     results = []
-    for client, host in es_clients:
+    clients = get_es_clients()
+    for client, host in clients:
         try:
             info = client.info()
             results.append({"host": host, "status": "connected", "version": info.get("version", {}).get("number", "unknown")})
